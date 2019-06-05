@@ -10,26 +10,15 @@ import Foundation
 
 struct UserAccountViewModel {
     
+    //this is case that you'd actually want to use instance variables, but I'm having to pick my battles at this point...
     static var userEmail: String?
     
     static var userPassword: String?
     
-    func setUserDict() {
+    static func setUserDict() {
         let userID = UserAccounts.userAccountEmail.count > 0 ? UserAccounts.userAccountEmail.count : 0
         
         UserAccounts.userAccountEmail[userID] = UserAccountViewModel.userEmail
         UserAccounts.userPasswords[userID] = UserAccountViewModel.userPassword
     }
-    
-    func getUserID(forEmailAddress email: String) -> Int {
-        var userID: Int = 0
-        
-        for user in UserAccounts.userAccountEmail {
-            if user.value == email {
-                userID = user.key
-            }
-        }
-        return userID
-    }
-    
 }

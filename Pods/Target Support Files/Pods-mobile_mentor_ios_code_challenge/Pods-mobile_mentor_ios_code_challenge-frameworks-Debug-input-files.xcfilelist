@@ -1,0 +1,4 @@
+${PODS_ROOT}/Target Support Files/Pods-mobile_mentor_ios_code_challenge/Pods-mobile_mentor_ios_code_challenge-frameworks.sh
+${BUILT_PRODUCTS_DIR}/FLAnimatedImage/FLAnimatedImage.framework
+${BUILT_PRODUCTS_DIR}/PINCache/PINCache.framework
+${BUILT_PRODUCTS_DIR}/PINRemoteImage/PINRemoteImage.framework

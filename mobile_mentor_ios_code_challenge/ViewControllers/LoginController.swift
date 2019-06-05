@@ -10,7 +10,7 @@ import UIKit
 
 class LoginController: UIViewController, UITextFieldDelegate {
     
-    let mainView: MainView = { return MainView() }()
+    let mainView: LoginView = { return LoginView() }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,6 +21,19 @@ class LoginController: UIViewController, UITextFieldDelegate {
         
         setupView()
         
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("accountCreated"), object: nil, queue: OperationQueue.main) { [weak self] (_) in
+            CATransaction.begin()
+            CATransaction.setCompletionBlock({
+                self?.presentSearch()
+            })
+            self?.navigationController?.popToRootViewController(animated: true)
+            CATransaction.commit()
+        }
+    }
+    
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        mainView.frame = view.bounds
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -29,34 +42,30 @@ class LoginController: UIViewController, UITextFieldDelegate {
         mainView.passwordTextField.text = ""
     }
     
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .lightContent
-    }
-    
     fileprivate func setupUserAccounts() {
         
-        let defaultUsers = ["jane.smith@email.com", "john.doe@email.com"]
-        let defaultUserPasswords = ["test1234%^&*", "*&^%4321tset"]
+        //if we're hard coding these and not validating them with regex's, then let's make them simple for testing sake
+        //and this way is much safer and avoids potential array crashes and infinite repeats
+        let defaultUserNamesAndPasswords: [(username: String, password: String)] = [("a", "b"), ("c", "d")]
         
-        var userCount = 0
-        
-        repeat {
-            UserAccountViewModel.userEmail = defaultUsers[userCount]
-            UserAccountViewModel.userPassword = defaultUserPasswords[userCount]
-            UserAccountViewModel().setUserDict()
-            userCount = 1
-        } while userCount < defaultUsers.count
-        
+        for (username, password) in defaultUserNamesAndPasswords {
+            UserAccountViewModel.userEmail = username
+            UserAccountViewModel.userPassword = password
+            UserAccountViewModel.setUserDict()
+        }
     }
     
     fileprivate func setupView() {
         mainView.emailTextField.delegate = self
         mainView.passwordTextField.delegate = self
-        mainView.passwordTextField.isSecureTextEntry = true
+        
+        mainView.loginButton.addTarget(self, action: #selector(handleLoginButtonTap(sender:)), for: .touchUpInside)
 
         let dismissKeyboardTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         dismissKeyboardTapGestureRecognizer.cancelsTouchesInView = false
         mainView.addGestureRecognizer(dismissKeyboardTapGestureRecognizer)
+        
+        self.navigationItem.backBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: nil, action: nil)
         
         view.addSubview(mainView)
     }
@@ -67,17 +76,24 @@ class LoginController: UIViewController, UITextFieldDelegate {
     
     @objc func handleLoginButtonTap(sender: UIButton) {
         
-        guard let emailAddress = mainView.emailTextField.text?.lowercased(),
+        guard let emailAddress = mainView.emailTextField.text,
             let password = mainView.passwordTextField.text else { return }
         
-        if let user = getUser(emailAddress: emailAddress) {
+        let emailAddressLowercased = emailAddress.lowercased()
+        
+        if let user = getUser(emailAddress: emailAddressLowercased) {
             guard let savedPassword = UserAccounts.userPasswords[user] else { return }
-            UserAccountViewModel.userEmail = emailAddress
+            UserAccountViewModel.userEmail = emailAddressLowercased
             comparePassword(password: password, savedPassword: savedPassword)
         } else {
-            let alertController = CreateAlertController().withNoActions(title: "User Account Not Found", message: "The user account that you are attempting to use does not exist.")
-            alertController.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
-            present(alertController, animated: true) {
+            let alert = UIAlertController(title: "User Account Not Found", message: "The user account that you are attempting to use does not exist.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Create Account", style: .default, handler: { (_) in
+                let createAccountController = CreateAccountController()
+                UserAccountViewModel.userEmail = emailAddressLowercased
+                self.navigationController?.pushViewController(createAccountController, animated: true)
+            }))
+            alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+            self.present(alert, animated: true) {
                 self.mainView.passwordTextField.text = ""
             }
         }
@@ -95,15 +111,24 @@ class LoginController: UIViewController, UITextFieldDelegate {
     
     fileprivate func comparePassword(password: String, savedPassword: String) {
         if password == savedPassword {
-            print("User Login Successful. Navigate to SearchController")
+            self.mainView.emailTextField.text = ""
+            self.mainView.passwordTextField.text = ""
+            
+            self.presentSearch()
         } else {
-            let alertController = CreateAlertController().withCancelAction(title: "Incorrect Password", message: "Please re-enter your password and try again.")
+            let alertController = UIAlertController.withCancelAction(title: "Incorrect Password", message: "Please re-enter your password and try again.")
             
             present(alertController, animated: true) {
                 self.mainView.passwordTextField.text = ""
                 self.mainView.passwordTextField.becomeFirstResponder()
             }
         }
+    }
+    
+    func presentSearch() {
+        let searchController = SearchController()
+        let navigationController = UINavigationController(rootViewController: searchController)
+        self.present(navigationController, animated: true)
     }
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
